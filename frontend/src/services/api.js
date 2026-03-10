@@ -61,7 +61,7 @@ export const getLearningRecommendations = async (studentId) => {
   return response.data
 }
 
-export const getStudentProfile = async (studentId) => {
+export const getChatStudentProfile = async (studentId) => {
   const response = await api.get(`/chat/profile/${studentId}`)
   return response.data
 }
