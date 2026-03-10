@@ -133,4 +133,45 @@ export const getGameLeaderboard = async (gameType) => {
   return response.data
 }
 
+// Onboarding API
+export const registerStudent = async (registrationData) => {
+  const response = await api.post('/onboarding/register', registrationData)
+  return response.data
+}
+
+export const getLearningStyleQuestionnaire = async () => {
+  const response = await api.get('/onboarding/learning-style-questionnaire')
+  return response.data
+}
+
+export const assessLearningStyle = async (studentId, responses) => {
+  const response = await api.post('/onboarding/assess-learning-style', {
+    student_id: studentId,
+    responses
+  })
+  return response.data
+}
+
+export const generateDiagnosticQuiz = async (studentId, topics) => {
+  const response = await api.post('/onboarding/generate-diagnostic-quiz', {
+    student_id: studentId,
+    topics,
+    questions_per_topic: 3
+  })
+  return response.data
+}
+
+export const submitDiagnosticResults = async (studentId, responses) => {
+  const response = await api.post('/onboarding/submit-diagnostic-results', {
+    student_id: studentId,
+    responses
+  })
+  return response.data
+}
+
+export const getStudentProfile = async (studentId) => {
+  const response = await api.get(`/onboarding/student-profile/${studentId}`)
+  return response.data
+}
+
 export default api
