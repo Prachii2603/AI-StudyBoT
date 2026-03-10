@@ -1,13 +1,27 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.orm import Session
 from app.models import ChatRequest, ChatMessage
 from app.services.ai_service import ai_service
+from app.database import get_db
+from app.services.database_service import DatabaseService
 from typing import List
 
 router = APIRouter()
 
 @router.post("/message")
-async def send_message(request: ChatRequest):
+async def send_message(request: ChatRequest, db: Session = Depends(get_db)):
     try:
+        db_service = DatabaseService(db)
+        
+        # Save user message to database
+        db_service.save_chat_message(
+            user_id=request.student_id,
+            message_type="user",
+            content=request.message,
+            difficulty=request.difficulty_level
+        )
+        
+        # Generate AI response
         response = await ai_service.generate_response(
             request.message, 
             request.student_id,
@@ -16,6 +30,18 @@ async def send_message(request: ChatRequest):
         
         # Handle both old and new response formats
         if isinstance(response, dict):
+            # Save AI response to database
+            db_service.save_chat_message(
+                user_id=request.student_id,
+                message_type="assistant",
+                content=response.get("content", ""),
+                topic=response.get("adaptive_info", {}).get("topic"),
+                difficulty=response.get("adaptive_info", {}).get("adapted_difficulty"),
+                adaptive_info=response.get("adaptive_info", {}),
+                images=response.get("images", []),
+                learning_resources=response.get("learning_resources", [])
+            )
+            
             return {
                 "role": "assistant",
                 "content": response.get("content", ""),
@@ -27,7 +53,42 @@ async def send_message(request: ChatRequest):
             }
         else:
             # Fallback for old string format
+            db_service.save_chat_message(
+                user_id=request.student_id,
+                message_type="assistant",
+                content=response,
+                difficulty=request.difficulty_level
+            )
             return ChatMessage(role="assistant", content=response)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/history/{user_id}")
+async def get_chat_history(user_id: str, limit: int = 50, db: Session = Depends(get_db)):
+    """Get user's chat history"""
+    try:
+        db_service = DatabaseService(db)
+        history = db_service.get_chat_history(user_id, limit)
+        
+        return {
+            "history": [
+                {
+                    "id": msg.id,
+                    "role": msg.message_type,
+                    "content": msg.content,
+                    "topic": msg.topic,
+                    "difficulty": msg.difficulty,
+                    "adaptive_info": msg.adaptive_info,
+                    "images": msg.images,
+                    "learning_resources": msg.learning_resources,
+                    "timestamp": msg.created_at.isoformat()
+                }
+                for msg in history
+            ],
+            "total": len(history)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

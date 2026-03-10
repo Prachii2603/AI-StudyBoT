@@ -15,6 +15,7 @@ from datetime import datetime
 from pyunsplash import PyUnsplash
 from app.services.knowledge_tracing import knowledge_tracer
 from app.services.adaptive_engine import adaptive_engine
+from app.services.personalized_learning import personalized_learning
 from app.models.student import StudentKnowledgeProfile, LearningSession
 
 # Load environment variables

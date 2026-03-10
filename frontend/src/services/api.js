@@ -2,13 +2,76 @@ import axios from 'axios'
 
 const API_BASE_URL = 'http://localhost:8000/api'
 
+// Get auth token from localStorage
+const getAuthToken = () => {
+  return localStorage.getItem('token')
+}
+
 const api = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 10000, // 10 second timeout
   headers: {
     'Content-Type': 'application/json',
   },
 })
 
+// Add auth token to requests
+api.interceptors.request.use((config) => {
+  const token = getAuthToken()
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+// Authentication API
+export const register = async (userData) => {
+  try {
+    const response = await api.post('/auth/register', userData)
+    return response.data
+  } catch (error) {
+    console.error('Error registering user:', error)
+    throw error
+  }
+}
+
+export const login = async (email, password) => {
+  try {
+    const response = await api.post('/auth/login', { email, password })
+    return response.data
+  } catch (error) {
+    console.error('Error logging in:', error)
+    throw error
+  }
+}
+
+export const logout = async () => {
+  try {
+    const response = await api.post('/auth/logout')
+    // Clear local storage regardless of response
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    return response.data
+  } catch (error) {
+    // Clear local storage even if request fails
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    console.error('Error logging out:', error)
+    throw error
+  }
+}
+
+export const getCurrentUser = async () => {
+  try {
+    const response = await api.get('/auth/me')
+    return response.data
+  } catch (error) {
+    console.error('Error getting current user:', error)
+    throw error
+  }
+}
+
+// Chat API
 export const sendMessage = async (message, studentId, difficultyLevel) => {
   const response = await api.post('/chat/message', {
     message,
@@ -18,6 +81,7 @@ export const sendMessage = async (message, studentId, difficultyLevel) => {
   return response.data
 }
 
+// Quiz API
 export const generateQuiz = async (topic, difficulty, count, studentId = null) => {
   const response = await api.get(`/quiz/generate/${topic}`, {
     params: { difficulty, count, student_id: studentId },
@@ -41,6 +105,7 @@ export const analyzeQuizPerformance = async (quizResults, studentId) => {
   return response.data
 }
 
+// Progress API
 export const getProgress = async (studentId) => {
   const response = await api.get(`/progress/${studentId}`)
   return response.data
