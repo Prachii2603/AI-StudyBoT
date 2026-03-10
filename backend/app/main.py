@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import chat, quiz, progress, games, onboarding
+from app.routes import chat, quiz, progress, games, onboarding, websocket
 
 app = FastAPI(title="AI Learning Chatbot API - Enhanced")
 
@@ -17,6 +17,7 @@ app.include_router(quiz.router, prefix="/api/quiz", tags=["quiz"])
 app.include_router(progress.router, prefix="/api/progress", tags=["progress"])
 app.include_router(games.router, prefix="/api/games", tags=["games"])
 app.include_router(onboarding.router, prefix="/api/onboarding", tags=["onboarding"])
+app.include_router(websocket.router, prefix="/ws", tags=["websocket"])
 
 @app.get("/")
 def root():
@@ -24,4 +25,4 @@ def root():
 
 @app.get("/health")
 def health_check():
-    return {"status": "healthy", "version": "2.0.0", "features": ["BKT", "IRT", "Adaptive Learning", "Voice Processing", "Advanced Analytics"]}
+    return {"status": "healthy", "version": "2.0.0", "features": ["BKT", "IRT", "Adaptive Learning", "Voice Processing", "Advanced Analytics", "Real-time Speech-to-Text"]}

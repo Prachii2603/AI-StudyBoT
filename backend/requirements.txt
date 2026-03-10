@@ -15,3 +15,5 @@ duckduckgo-search==8.1.1
 pillow==12.1.1
 requests-oauthlib==2.0.0
 pyunsplash==1.0.0rc2
+faster-whisper==1.0.1
+websockets==12.0
