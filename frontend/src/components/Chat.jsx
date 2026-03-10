@@ -58,6 +58,36 @@ export default function Chat({ studentId }) {
           >
             <div className="whitespace-pre-wrap">{msg.content}</div>
             
+            {/* Display adaptive learning info if available */}
+            {msg.adaptive_info && (
+              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm font-semibold text-blue-800">🎯 Adaptive Learning</span>
+                  {msg.pace_adapted && (
+                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                      Pace Adapted
+                    </span>
+                  )}
+                </div>
+                <div className="text-xs text-blue-700 space-y-1">
+                  <div>
+                    <strong>Learning Pace:</strong> {msg.adaptive_info.learning_pace}
+                  </div>
+                  <div>
+                    <strong>Mastery Level:</strong> {Math.round(msg.adaptive_info.mastery_level)}%
+                  </div>
+                  {msg.adaptive_info.adapted_difficulty !== msg.adaptive_info.original_difficulty && (
+                    <div>
+                      <strong>Difficulty Adjusted:</strong> {msg.adaptive_info.original_difficulty} → {msg.adaptive_info.adapted_difficulty}
+                    </div>
+                  )}
+                  <div className="text-xs text-blue-600 mt-2">
+                    {msg.adaptive_info.pace_explanation}
+                  </div>
+                </div>
+              </div>
+            )}
+            
             {/* Display images if available */}
             {msg.images && msg.images.length > 0 && (
               <div className="mt-3 space-y-2">
@@ -123,7 +153,7 @@ export default function Chat({ studentId }) {
         <h2 className="text-xl font-semibold">🤖 AI Tutor Chat</h2>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium">Difficulty:</label>
+            <label className="text-sm font-medium">Base Difficulty:</label>
             <select
               value={difficulty}
               onChange={(e) => setDifficulty(Number(e.target.value))}
@@ -133,6 +163,9 @@ export default function Chat({ studentId }) {
               <option value={2}>Intermediate</option>
               <option value={3}>Advanced</option>
             </select>
+            <span className="text-xs text-gray-500">
+              (Auto-adapts to your pace)
+            </span>
           </div>
         </div>
       </div>

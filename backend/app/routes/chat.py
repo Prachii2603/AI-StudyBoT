@@ -21,7 +21,9 @@ async def send_message(request: ChatRequest):
                 "content": response.get("content", ""),
                 "images": response.get("images", []),
                 "learning_resources": response.get("learning_resources", []),
-                "timestamp": response.get("timestamp")
+                "timestamp": response.get("timestamp"),
+                "adaptive_info": response.get("adaptive_info", {}),
+                "pace_adapted": response.get("adaptive_info", {}).get("adapted_difficulty") != request.difficulty_level
             }
         else:
             # Fallback for old string format

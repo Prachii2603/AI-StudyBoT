@@ -1,5 +1,5 @@
 import os
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from app.models import QuizQuestion
 import uuid
 from dotenv import load_dotenv
@@ -13,6 +13,9 @@ from duckduckgo_search import DDGS
 import re
 from datetime import datetime
 from pyunsplash import PyUnsplash
+from app.services.knowledge_tracing import knowledge_tracer
+from app.services.adaptive_engine import adaptive_engine
+from app.models.student import StudentKnowledgeProfile, LearningSession
 
 # Load environment variables
 load_dotenv()
@@ -149,12 +152,31 @@ class EnhancedAIService:
             return ""
     
     async def generate_response(self, message: str, student_id: str, difficulty: int):
+        # Get or initialize student knowledge profile
+        try:
+            # Try to get existing knowledge profile from knowledge tracer
+            skp = knowledge_tracer.get_student_progress(student_id)
+        except:
+            # Initialize if doesn't exist
+            topics = self._extract_topics_from_message(message)
+            skp = knowledge_tracer.initialize_student_knowledge(student_id, topics)
+        
+        # Get basic student profile for conversation history
         profile = self.get_student_profile(student_id)
         
         if student_id not in self.conversation_history:
             self.conversation_history[student_id] = []
         
         self.conversation_history[student_id].append({"role": "user", "content": message})
+        
+        # Extract topic from message for adaptive learning
+        topic = self._extract_main_topic(message)
+        
+        # Adapt difficulty based on student's learning pace and mastery
+        adapted_difficulty = self._adapt_difficulty_for_pace(skp, topic, difficulty)
+        
+        # Get learning pace recommendations
+        pace_recommendations = self._get_pace_recommendations(skp, topic)
         
         # Analyze if the question needs current information
         needs_search = self._needs_web_search(message)
@@ -168,14 +190,14 @@ class EnhancedAIService:
             # Search for current information
             search_results = await self.search_web_content(message)
             if search_results:
-                context_info += "\\n\\nCurrent information from web sources:\\n"
+                context_info += "\n\nCurrent information from web sources:\n"
                 for result in search_results:
-                    context_info += f"- {result['title']}: {result['snippet'][:200]}...\\n"
+                    context_info += f"- {result['title']}: {result['snippet'][:200]}...\n"
         
         # Get Wikipedia information for educational topics
         wiki_content = await self.get_wikipedia_content(message)
         if wiki_content:
-            context_info += f"\\n\\nEducational background:\\n{wiki_content}\\n"
+            context_info += f"\n\nEducational background:\n{wiki_content}\n"
         
         # Get educational images if needed
         if needs_images:
@@ -183,8 +205,10 @@ class EnhancedAIService:
             if topic_keywords:
                 images = await self.get_educational_images(topic_keywords, 2)
         
-        # Create enhanced system prompt
-        system_prompt = self._create_adaptive_prompt(profile, difficulty, context_info)
+        # Create adaptive system prompt with pace information
+        system_prompt = self._create_pace_adaptive_prompt(
+            profile, skp, adapted_difficulty, context_info, pace_recommendations
+        )
         
         try:
             if self.ai_provider == "openai" and hasattr(self, 'openai_client'):
@@ -192,29 +216,42 @@ class EnhancedAIService:
             elif self.ai_provider == "groq" and hasattr(self, 'groq_client'):
                 response = await self._get_groq_response(system_prompt, self.conversation_history[student_id])
             else:
-                response = f"I understand you're asking about: {message}. Let me help you learn this concept at difficulty level {difficulty}. (Note: AI provider not configured)"
+                response = f"I understand you're asking about: {message}. Let me help you learn this concept at your optimal pace. (Note: AI provider not configured)"
         except Exception as e:
             response = f"I'm here to help you learn! However, I'm having trouble connecting to my AI service right now. Could you try rephrasing your question? (Error: {str(e)})"
         
         self.conversation_history[student_id].append({"role": "assistant", "content": response})
+        
+        # Track this interaction for learning pace analysis
+        self._track_learning_interaction(student_id, topic, message, response, adapted_difficulty)
         
         # Update student interaction history
         profile['interaction_history'].append({
             'timestamp': datetime.now().isoformat(),
             'question': message,
             'response': response,
-            'difficulty': difficulty,
-            'images_provided': len(images) > 0
+            'original_difficulty': difficulty,
+            'adapted_difficulty': adapted_difficulty,
+            'topic': topic,
+            'images_provided': len(images) > 0,
+            'pace_adapted': adapted_difficulty != difficulty
         })
         
-        # Return response with images and learning resources
+        # Return response with adaptive learning information
         learning_resources = await self._get_learning_resources(message)
         
         return {
             "content": response,
             "images": images,
             "learning_resources": learning_resources,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
+            "adaptive_info": {
+                "original_difficulty": difficulty,
+                "adapted_difficulty": adapted_difficulty,
+                "learning_pace": pace_recommendations["pace_level"],
+                "mastery_level": skp.knowledge_areas.get(topic, 10),
+                "pace_explanation": pace_recommendations["explanation"]
+            }
         }
     
     def _needs_visual_content(self, message: str) -> bool:
@@ -1300,6 +1337,129 @@ Format your response as a JSON array with this exact structure:
             # Store explanation if not already stored
             if question.id not in self.quiz_explanations:
                 self.quiz_explanations[question.id] = f"The correct answer relates to fundamental concepts in this topic area."
+    
+    def _extract_topics_from_message(self, message: str) -> List[str]:
+        """Extract potential topics from a message for knowledge tracking"""
+        # Common educational topics
+        topic_keywords = {
+            'python': ['python', 'programming', 'code', 'function', 'variable', 'list', 'dictionary'],
+            'machine learning': ['machine learning', 'ml', 'algorithm', 'model', 'training', 'prediction'],
+            'neural networks': ['neural network', 'deep learning', 'neuron', 'backpropagation', 'activation'],
+            'javascript': ['javascript', 'js', 'web development', 'dom', 'event', 'callback'],
+            'data science': ['data science', 'statistics', 'analysis', 'visualization', 'pandas', 'numpy'],
+            'mathematics': ['math', 'algebra', 'calculus', 'geometry', 'equation', 'formula'],
+            'physics': ['physics', 'force', 'energy', 'motion', 'wave', 'particle'],
+            'chemistry': ['chemistry', 'molecule', 'atom', 'reaction', 'compound', 'element']
+        }
+        
+        message_lower = message.lower()
+        detected_topics = []
+        
+        for topic, keywords in topic_keywords.items():
+            if any(keyword in message_lower for keyword in keywords):
+                detected_topics.append(topic)
+        
+        return detected_topics if detected_topics else ['general']
+    
+    def _extract_main_topic(self, message: str) -> str:
+        """Extract the main topic from a message"""
+        topics = self._extract_topics_from_message(message)
+        return topics[0] if topics else 'general'
+    
+    def _adapt_difficulty_for_pace(self, skp: StudentKnowledgeProfile, topic: str, base_difficulty: int) -> int:
+        """Adapt difficulty based on student's learning pace and mastery level"""
+        # Get current mastery level for the topic
+        mastery_level = skp.knowledge_areas.get(topic, 10) / 100  # Convert to 0-1 scale
+        learning_velocity = skp.learning_velocity.get(topic, 0.0)
+        
+        # Adapt based on mastery level
+        if mastery_level < 0.3:
+            adapted_difficulty = max(1, base_difficulty - 1)
+        elif mastery_level > 0.8:
+            adapted_difficulty = min(3, base_difficulty + 1)
+        else:
+            if learning_velocity > 0.1:
+                adapted_difficulty = min(3, base_difficulty + 1)
+            elif learning_velocity < -0.1:
+                adapted_difficulty = max(1, base_difficulty - 1)
+            else:
+                adapted_difficulty = base_difficulty
+        
+        return adapted_difficulty
+    
+    def _get_pace_recommendations(self, skp: StudentKnowledgeProfile, topic: str) -> Dict[str, Any]:
+        """Get learning pace recommendations for the student"""
+        mastery_level = skp.knowledge_areas.get(topic, 10) / 100
+        learning_velocity = skp.learning_velocity.get(topic, 0.0)
+        
+        if mastery_level < 0.3:
+            pace_level = "foundational"
+            explanation = "Building strong foundations with step-by-step explanations"
+        elif mastery_level < 0.6:
+            pace_level = "developing"
+            explanation = "Reinforcing understanding with guided practice"
+        elif mastery_level < 0.8:
+            pace_level = "proficient"
+            explanation = "Advancing knowledge with deeper exploration"
+        else:
+            pace_level = "advanced"
+            explanation = "Challenging with expert-level insights"
+        
+        return {
+            "pace_level": pace_level,
+            "explanation": explanation,
+            "mastery_level": mastery_level,
+            "learning_velocity": learning_velocity
+        }
+    
+    def _create_pace_adaptive_prompt(self, profile: Dict[str, Any], skp: StudentKnowledgeProfile, 
+                                   difficulty: int, context_info: str, pace_recommendations: Dict) -> str:
+        """Create an adaptive system prompt based on learning pace"""
+        
+        base_prompt = f"""You are an AI tutor that adapts to each student's learning pace and style. 
+
+STUDENT LEARNING PROFILE:
+- Learning Pace: {pace_recommendations['pace_level']}
+- Mastery Level: {pace_recommendations['mastery_level']:.1%}
+- Learning Velocity: {pace_recommendations['learning_velocity']:.2f}
+- Pace Strategy: {pace_recommendations['explanation']}
+
+DIFFICULTY LEVEL: {difficulty} (adapted based on student's pace)
+
+TEACHING GUIDELINES:
+1. Match your explanation complexity to the student's current mastery level
+2. Adjust pacing based on their learning velocity
+3. Use appropriate examples for their skill level
+4. Provide the right amount of detail - not too much, not too little
+5. Encourage progress while maintaining appropriate challenge level
+
+{context_info}
+
+Remember: Your goal is to help the student learn effectively at their optimal pace."""
+
+        return base_prompt
+    
+    def _track_learning_interaction(self, student_id: str, topic: str, question: str, 
+                                  response: str, difficulty: int):
+        """Track learning interaction for pace analysis"""
+        try:
+            if not hasattr(self, 'learning_sessions'):
+                self.learning_sessions = {}
+            
+            if student_id not in self.learning_sessions:
+                self.learning_sessions[student_id] = []
+            
+            # Simple tracking for now
+            interaction = {
+                'timestamp': datetime.now().isoformat(),
+                'topic': topic,
+                'question': question,
+                'difficulty': difficulty
+            }
+            self.learning_sessions[student_id].append(interaction)
+            
+        except Exception as e:
+            print(f"Error tracking learning interaction: {e}")
 
 # Create a global instance
 ai_service = EnhancedAIService()
