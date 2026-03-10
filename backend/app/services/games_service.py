@@ -320,13 +320,55 @@ class GamesService:
     def _generate_word_pairs(self, topic: str) -> List[Dict[str, str]]:
         """Generate word-definition pairs for the topic"""
         topic_pairs = {
+            "python": [
+                {"term": "Variable", "definition": "A named storage location that holds data"},
+                {"term": "Function", "definition": "A reusable block of code that performs a specific task"},
+                {"term": "List", "definition": "An ordered collection of items that can be modified"},
+                {"term": "Dictionary", "definition": "A collection of key-value pairs"},
+                {"term": "Loop", "definition": "A programming construct that repeats code"},
+                {"term": "String", "definition": "A sequence of characters enclosed in quotes"},
+                {"term": "Integer", "definition": "A whole number without decimal points"},
+                {"term": "Boolean", "definition": "A data type that can be True or False"}
+            ],
             "machine learning": [
                 {"term": "Algorithm", "definition": "A set of rules or instructions for solving a problem"},
                 {"term": "Training Data", "definition": "Data used to teach a machine learning model"},
                 {"term": "Overfitting", "definition": "When a model learns training data too well and performs poorly on new data"},
                 {"term": "Feature", "definition": "An individual measurable property of observed phenomena"},
                 {"term": "Supervised Learning", "definition": "Learning with labeled training examples"},
-                {"term": "Neural Network", "definition": "Computing system inspired by biological neural networks"}
+                {"term": "Neural Network", "definition": "Computing system inspired by biological neural networks"},
+                {"term": "Classification", "definition": "Predicting categories or classes"},
+                {"term": "Regression", "definition": "Predicting continuous numerical values"}
+            ],
+            "javascript": [
+                {"term": "Variable", "definition": "Container for storing data values"},
+                {"term": "Function", "definition": "Block of code designed to perform a particular task"},
+                {"term": "Array", "definition": "Ordered list of values stored in a single variable"},
+                {"term": "Object", "definition": "Collection of properties and methods"},
+                {"term": "Event", "definition": "Action that can be detected by JavaScript"},
+                {"term": "DOM", "definition": "Document Object Model - structure of HTML elements"},
+                {"term": "Callback", "definition": "Function passed as argument to another function"},
+                {"term": "Promise", "definition": "Object representing eventual completion of async operation"}
+            ],
+            "neural networks": [
+                {"term": "Neuron", "definition": "Basic processing unit that receives and sends signals"},
+                {"term": "Weight", "definition": "Parameter that determines connection strength between neurons"},
+                {"term": "Bias", "definition": "Additional parameter that shifts the activation function"},
+                {"term": "Activation Function", "definition": "Function that determines neuron output based on input"},
+                {"term": "Backpropagation", "definition": "Algorithm for training networks by updating weights"},
+                {"term": "Layer", "definition": "Collection of neurons that process data together"},
+                {"term": "Deep Learning", "definition": "Neural networks with multiple hidden layers"},
+                {"term": "Gradient", "definition": "Measure of how much to change weights during training"}
+            ],
+            "data science": [
+                {"term": "Dataset", "definition": "Collection of data organized in rows and columns"},
+                {"term": "Visualization", "definition": "Graphical representation of data"},
+                {"term": "Correlation", "definition": "Statistical measure of relationship between variables"},
+                {"term": "Outlier", "definition": "Data point significantly different from others"},
+                {"term": "Hypothesis", "definition": "Testable prediction about data"},
+                {"term": "Statistics", "definition": "Science of collecting and analyzing numerical data"},
+                {"term": "Pandas", "definition": "Python library for data manipulation and analysis"},
+                {"term": "Regression", "definition": "Statistical method for modeling relationships"}
             ],
             "programming": [
                 {"term": "Variable", "definition": "A storage location with an associated name that contains data"},
@@ -334,44 +376,100 @@ class GamesService:
                 {"term": "Loop", "definition": "A sequence of instructions that repeats until a condition is met"},
                 {"term": "Array", "definition": "A collection of elements stored at contiguous memory locations"},
                 {"term": "Debugging", "definition": "The process of finding and fixing errors in code"},
-                {"term": "API", "definition": "Application Programming Interface for software communication"}
+                {"term": "API", "definition": "Application Programming Interface for software communication"},
+                {"term": "Algorithm", "definition": "Step-by-step procedure for solving a problem"},
+                {"term": "Syntax", "definition": "Rules that define valid constructs in a programming language"}
             ]
         }
         
-        return topic_pairs.get(topic.lower(), [
-            {"term": "Concept A", "definition": f"Definition related to {topic}"},
-            {"term": "Concept B", "definition": f"Another definition about {topic}"},
-            {"term": "Concept C", "definition": f"Third concept in {topic}"},
-            {"term": "Concept D", "definition": f"Fourth concept about {topic}"}
-        ])
+        # Find matching topic or use generic fallback
+        topic_lower = topic.lower()
+        for key in topic_pairs:
+            if key in topic_lower or topic_lower in key:
+                return topic_pairs[key]
+        
+        # Generic fallback
+        return [
+            {"term": f"{topic} Concept", "definition": f"Fundamental idea in {topic}"},
+            {"term": f"{topic} Method", "definition": f"Common approach used in {topic}"},
+            {"term": f"{topic} Tool", "definition": f"Instrument or technique for {topic}"},
+            {"term": f"{topic} Process", "definition": f"Series of steps in {topic}"},
+            {"term": f"{topic} Theory", "definition": f"Explanation of principles in {topic}"},
+            {"term": f"{topic} Application", "definition": f"Practical use of {topic}"}
+        ]
     
     def _generate_lightning_questions(self, topic: str) -> List[Dict[str, Any]]:
         """Generate quick questions for lightning quiz"""
+        topic_questions = {
+            "python": [
+                {"question": "What keyword is used to define a function in Python?", "options": ["func", "def", "function", "define"], "correct_answer": 1},
+                {"question": "Which data type is mutable in Python?", "options": ["tuple", "string", "list", "int"], "correct_answer": 2},
+                {"question": "What symbol is used for comments in Python?", "options": ["//", "#", "/*", "<!--"], "correct_answer": 1},
+                {"question": "Which method adds an element to the end of a list?", "options": ["add()", "append()", "insert()", "push()"], "correct_answer": 1},
+                {"question": "What is the output of len([1,2,3])?", "options": ["1", "2", "3", "4"], "correct_answer": 2}
+            ],
+            "machine learning": [
+                {"question": "What type of learning uses labeled data?", "options": ["Unsupervised", "Supervised", "Reinforcement", "Deep"], "correct_answer": 1},
+                {"question": "What is overfitting?", "options": ["Too simple model", "Perfect model", "Model too complex for data", "Fast training"], "correct_answer": 2},
+                {"question": "Which algorithm is used for classification?", "options": ["Linear Regression", "Decision Tree", "K-means", "PCA"], "correct_answer": 1},
+                {"question": "What does AI stand for?", "options": ["Automated Intelligence", "Artificial Intelligence", "Advanced Intelligence", "Applied Intelligence"], "correct_answer": 1},
+                {"question": "What is cross-validation used for?", "options": ["Data cleaning", "Model evaluation", "Feature selection", "Data collection"], "correct_answer": 1}
+            ],
+            "javascript": [
+                {"question": "Which keyword declares a variable?", "options": ["variable", "var", "declare", "let"], "correct_answer": 1},
+                {"question": "What does '===' check?", "options": ["Value only", "Type only", "Type and value", "Reference"], "correct_answer": 2},
+                {"question": "Which method adds to end of array?", "options": ["add()", "append()", "push()", "insert()"], "correct_answer": 2},
+                {"question": "What is a closure?", "options": ["Loop structure", "Function with outer scope access", "Error handling", "File operation"], "correct_answer": 1},
+                {"question": "Which is NOT a JS data type?", "options": ["undefined", "boolean", "float", "symbol"], "correct_answer": 2}
+            ],
+            "neural networks": [
+                {"question": "What is the basic unit of a neural network?", "options": ["Layer", "Neuron", "Weight", "Bias"], "correct_answer": 1},
+                {"question": "What do activation functions add?", "options": ["Linearity", "Non-linearity", "Speed", "Memory"], "correct_answer": 1},
+                {"question": "What is backpropagation for?", "options": ["Forward pass", "Training weights", "Data preprocessing", "Model evaluation"], "correct_answer": 1},
+                {"question": "Which activation is common in hidden layers?", "options": ["Sigmoid", "ReLU", "Linear", "Step"], "correct_answer": 1},
+                {"question": "What is a perceptron?", "options": ["Activation function", "Simplest neural network", "Learning algorithm", "Data structure"], "correct_answer": 1}
+            ],
+            "data science": [
+                {"question": "What is the first step in data science?", "options": ["Model building", "Data collection", "Visualization", "Interpretation"], "correct_answer": 1},
+                {"question": "Which library is used for data manipulation?", "options": ["NumPy", "Pandas", "Matplotlib", "Scikit-learn"], "correct_answer": 1},
+                {"question": "What does EDA stand for?", "options": ["Efficient Data Analysis", "Exploratory Data Analysis", "Extended Data Application", "Experimental Data Approach"], "correct_answer": 1},
+                {"question": "Best visualization for distribution?", "options": ["Scatter plot", "Line chart", "Histogram", "Pie chart"], "correct_answer": 2},
+                {"question": "What is imputation?", "options": ["Removing missing data", "Filling missing values", "Ignoring missing data", "Creating new data"], "correct_answer": 1}
+            ]
+        }
+        
+        # Find matching topic or use generic questions
+        topic_lower = topic.lower()
+        for key in topic_questions:
+            if key in topic_lower or topic_lower in key:
+                return topic_questions[key]
+        
+        # Generic fallback questions
         questions = [
             {
                 "question": f"What is a key concept in {topic}?",
-                "options": ["Option A", "Option B", "Option C", "Option D"],
+                "options": [f"Main concept", f"Secondary idea", f"Unrelated topic", f"Complex theory"],
                 "correct_answer": 0
             },
             {
                 "question": f"Which statement about {topic} is true?",
-                "options": ["Statement 1", "Statement 2", "Statement 3", "Statement 4"],
-                "correct_answer": 1
+                "options": [f"True statement", f"False statement", f"Misleading info", f"Incorrect fact"],
+                "correct_answer": 0
             },
             {
                 "question": f"In {topic}, what does this term mean?",
-                "options": ["Meaning A", "Meaning B", "Meaning C", "Meaning D"],
-                "correct_answer": 2
+                "options": [f"Correct meaning", f"Wrong definition", f"Unrelated term", f"Confusing explanation"],
+                "correct_answer": 0
             },
             {
                 "question": f"What is the primary use of {topic}?",
-                "options": ["Use A", "Use B", "Use C", "Use D"],
+                "options": [f"Main application", f"Secondary use", f"Irrelevant purpose", f"Wrong application"],
                 "correct_answer": 0
             },
             {
                 "question": f"Which approach is common in {topic}?",
-                "options": ["Approach A", "Approach B", "Approach C", "Approach D"],
-                "correct_answer": 1
+                "options": [f"Standard approach", f"Uncommon method", f"Wrong technique", f"Outdated practice"],
+                "correct_answer": 0
             }
         ]
         

@@ -396,7 +396,7 @@ Format your response as a JSON array with this exact structure:
 Make sure questions are educational and appropriate for the difficulty level."""
 
         response = self.groq_client.chat.completions.create(
-            model="llama3-8b-8192",
+            model="llama-3.1-8b-instant",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=1000,
             temperature=0.7
@@ -529,8 +529,70 @@ Make sure questions are educational and appropriate for the difficulty level."""
         questions = []
         difficulty_labels = {1: "Basic", 2: "Intermediate", 3: "Advanced"}
         
-        # Topic-specific question banks
+        # Comprehensive topic-specific question banks
         question_banks = {
+            "python": [
+                {
+                    "question": "Which of the following is the correct way to define a function in Python?",
+                    "options": ["function myFunc():", "def myFunc():", "define myFunc():", "func myFunc():"],
+                    "correct": 1,
+                    "explanation": "In Python, functions are defined using the 'def' keyword followed by the function name and parentheses."
+                },
+                {
+                    "question": "What is the output of: print(type([1, 2, 3]))?",
+                    "options": ["<class 'tuple'>", "<class 'list'>", "<class 'array'>", "<class 'dict'>"],
+                    "correct": 1,
+                    "explanation": "The type() function returns the class type of an object. [1, 2, 3] is a list, so it returns <class 'list'>."
+                },
+                {
+                    "question": "Which method is used to add an element to the end of a list in Python?",
+                    "options": ["add()", "append()", "insert()", "push()"],
+                    "correct": 1,
+                    "explanation": "The append() method adds a single element to the end of a list."
+                },
+                {
+                    "question": "What is the correct way to create a dictionary in Python?",
+                    "options": ["{key: value}", "[key: value]", "(key: value)", "<key: value>"],
+                    "correct": 0,
+                    "explanation": "Dictionaries in Python are created using curly braces {} with key-value pairs separated by colons."
+                },
+                {
+                    "question": "Which of the following is used for single-line comments in Python?",
+                    "options": ["//", "/* */", "#", "<!-- -->"],
+                    "correct": 2,
+                    "explanation": "In Python, single-line comments start with the # symbol."
+                },
+                {
+                    "question": "What does the 'len()' function return?",
+                    "options": ["The last element", "The first element", "The number of elements", "The type of object"],
+                    "correct": 2,
+                    "explanation": "The len() function returns the number of items (length) in an object like a string, list, or dictionary."
+                },
+                {
+                    "question": "Which operator is used for exponentiation in Python?",
+                    "options": ["^", "**", "exp()", "pow()"],
+                    "correct": 1,
+                    "explanation": "The ** operator is used for exponentiation in Python. For example, 2**3 equals 8."
+                },
+                {
+                    "question": "What is the correct way to import the 'math' module in Python?",
+                    "options": ["include math", "import math", "using math", "require math"],
+                    "correct": 1,
+                    "explanation": "The 'import' keyword is used to import modules in Python."
+                },
+                {
+                    "question": "Which of the following is a mutable data type in Python?",
+                    "options": ["tuple", "string", "list", "integer"],
+                    "correct": 2,
+                    "explanation": "Lists are mutable in Python, meaning their contents can be changed after creation."
+                },
+                {
+                    "question": "What is the output of: print('Hello' + 'World')?",
+                    "options": ["Hello World", "HelloWorld", "Hello+World", "Error"],
+                    "correct": 1,
+                    "explanation": "String concatenation with + joins strings together without spaces, resulting in 'HelloWorld'."
+                }
+            ],
             "machine learning": [
                 {
                     "question": "What is the primary goal of machine learning?",
@@ -549,6 +611,48 @@ Make sure questions are educational and appropriate for the difficulty level."""
                     "options": ["Model performs well on training data but poorly on new data", "Model is too simple", "Model trains too slowly", "Model uses too little data"],
                     "correct": 0,
                     "explanation": "Overfitting occurs when a model learns the training data too well, including noise, making it perform poorly on new, unseen data."
+                },
+                {
+                    "question": "Which algorithm is commonly used for classification problems?",
+                    "options": ["Linear Regression", "Decision Tree", "K-means", "PCA"],
+                    "correct": 1,
+                    "explanation": "Decision Trees are commonly used for classification problems as they can categorize data into different classes."
+                },
+                {
+                    "question": "What is the purpose of cross-validation?",
+                    "options": ["To increase training speed", "To evaluate model performance", "To reduce data size", "To clean data"],
+                    "correct": 1,
+                    "explanation": "Cross-validation is used to evaluate how well a model will perform on unseen data by testing it on different subsets of the training data."
+                },
+                {
+                    "question": "Which metric is commonly used to evaluate classification models?",
+                    "options": ["Mean Squared Error", "Accuracy", "R-squared", "Mean Absolute Error"],
+                    "correct": 1,
+                    "explanation": "Accuracy measures the percentage of correct predictions and is a common metric for classification models."
+                },
+                {
+                    "question": "What is feature engineering?",
+                    "options": ["Building hardware", "Creating new features from existing data", "Removing data", "Training models"],
+                    "correct": 1,
+                    "explanation": "Feature engineering involves creating new features or modifying existing ones to improve model performance."
+                },
+                {
+                    "question": "Which type of learning doesn't use labeled data?",
+                    "options": ["Supervised learning", "Unsupervised learning", "Semi-supervised learning", "Reinforcement learning"],
+                    "correct": 1,
+                    "explanation": "Unsupervised learning finds patterns in data without using labeled examples or target variables."
+                },
+                {
+                    "question": "What is a neural network inspired by?",
+                    "options": ["Computer circuits", "The human brain", "Mathematical equations", "Database structures"],
+                    "correct": 1,
+                    "explanation": "Neural networks are inspired by the structure and function of biological neural networks in the human brain."
+                },
+                {
+                    "question": "What is the purpose of training data in machine learning?",
+                    "options": ["To test the final model", "To teach the model patterns", "To validate results", "To store information"],
+                    "correct": 1,
+                    "explanation": "Training data is used to teach the machine learning model to recognize patterns and make predictions."
                 }
             ],
             "neural networks": [
@@ -563,14 +667,178 @@ Make sure questions are educational and appropriate for the difficulty level."""
                     "options": ["To add complexity and non-linearity", "To reduce computation", "To store data", "To connect layers"],
                     "correct": 0,
                     "explanation": "Activation functions introduce non-linearity into the network, allowing it to learn complex patterns and relationships in data."
+                },
+                {
+                    "question": "What is backpropagation used for?",
+                    "options": ["Forward pass calculation", "Training the network by updating weights", "Data preprocessing", "Model evaluation"],
+                    "correct": 1,
+                    "explanation": "Backpropagation is the algorithm used to train neural networks by calculating gradients and updating weights to minimize error."
+                },
+                {
+                    "question": "Which activation function is commonly used in hidden layers?",
+                    "options": ["Sigmoid", "ReLU", "Linear", "Step function"],
+                    "correct": 1,
+                    "explanation": "ReLU (Rectified Linear Unit) is commonly used in hidden layers because it helps with the vanishing gradient problem and is computationally efficient."
+                },
+                {
+                    "question": "What is a perceptron?",
+                    "options": ["A type of activation function", "The simplest form of neural network", "A learning algorithm", "A data structure"],
+                    "correct": 1,
+                    "explanation": "A perceptron is the simplest form of neural network, consisting of a single neuron that can learn linear decision boundaries."
+                },
+                {
+                    "question": "What is the purpose of bias in neural networks?",
+                    "options": ["To add flexibility to the model", "To reduce overfitting", "To speed up training", "To store weights"],
+                    "correct": 0,
+                    "explanation": "Bias allows the activation function to shift, providing more flexibility for the model to fit the data better."
+                },
+                {
+                    "question": "What is a deep neural network?",
+                    "options": ["A network with one hidden layer", "A network with multiple hidden layers", "A network with many neurons", "A network with complex data"],
+                    "correct": 1,
+                    "explanation": "A deep neural network has multiple hidden layers (typically more than 2-3), allowing it to learn complex hierarchical patterns."
+                },
+                {
+                    "question": "What is the vanishing gradient problem?",
+                    "options": ["Gradients become too large", "Gradients become very small in deep networks", "Gradients disappear completely", "Gradients become negative"],
+                    "correct": 1,
+                    "explanation": "The vanishing gradient problem occurs when gradients become very small as they propagate back through deep networks, making learning difficult."
+                },
+                {
+                    "question": "Which layer type is typically used for image recognition?",
+                    "options": ["Dense layer", "Convolutional layer", "Recurrent layer", "Dropout layer"],
+                    "correct": 1,
+                    "explanation": "Convolutional layers are specifically designed for image recognition as they can detect local features and patterns in images."
+                },
+                {
+                    "question": "What is dropout in neural networks?",
+                    "options": ["A type of layer", "A regularization technique", "An activation function", "A loss function"],
+                    "correct": 1,
+                    "explanation": "Dropout is a regularization technique that randomly sets some neurons to zero during training to prevent overfitting."
                 }
             ],
-            "python programming": [
+            "javascript": [
                 {
-                    "question": "Which of the following is the correct way to define a function in Python?",
-                    "options": ["function myFunc():", "def myFunc():", "define myFunc():", "func myFunc():"],
+                    "question": "Which of the following is the correct way to declare a variable in JavaScript?",
+                    "options": ["variable x = 5;", "var x = 5;", "declare x = 5;", "x := 5;"],
                     "correct": 1,
-                    "explanation": "In Python, functions are defined using the 'def' keyword followed by the function name and parentheses."
+                    "explanation": "In JavaScript, variables are declared using 'var', 'let', or 'const' keywords."
+                },
+                {
+                    "question": "What is the difference between '==' and '===' in JavaScript?",
+                    "options": ["No difference", "'==' checks type, '===' doesn't", "'===' checks type and value, '==' only value", "'==' is faster"],
+                    "correct": 2,
+                    "explanation": "'===' (strict equality) checks both type and value, while '==' (loose equality) only checks value after type coercion."
+                },
+                {
+                    "question": "Which method is used to add an element to the end of an array?",
+                    "options": ["add()", "append()", "push()", "insert()"],
+                    "correct": 2,
+                    "explanation": "The push() method adds one or more elements to the end of an array and returns the new length."
+                },
+                {
+                    "question": "What is a closure in JavaScript?",
+                    "options": ["A way to close files", "A function with access to outer scope", "A loop structure", "An error handling mechanism"],
+                    "correct": 1,
+                    "explanation": "A closure is a function that has access to variables in its outer (enclosing) scope even after the outer function has returned."
+                },
+                {
+                    "question": "Which of the following is NOT a JavaScript data type?",
+                    "options": ["undefined", "boolean", "float", "symbol"],
+                    "correct": 2,
+                    "explanation": "JavaScript doesn't have a 'float' data type. Numbers in JavaScript are all of type 'number'."
+                },
+                {
+                    "question": "What does 'this' refer to in JavaScript?",
+                    "options": ["The current function", "The global object", "The object that owns the method", "The previous element"],
+                    "correct": 2,
+                    "explanation": "'this' refers to the object that is executing the current function or method."
+                },
+                {
+                    "question": "Which method is used to remove the last element from an array?",
+                    "options": ["pop()", "remove()", "delete()", "splice()"],
+                    "correct": 0,
+                    "explanation": "The pop() method removes and returns the last element from an array."
+                },
+                {
+                    "question": "What is the correct way to create a function in JavaScript?",
+                    "options": ["function = myFunc() {}", "function myFunc() {}", "create function myFunc() {}", "def myFunc() {}"],
+                    "correct": 1,
+                    "explanation": "Functions in JavaScript are declared using the 'function' keyword followed by the function name and parentheses."
+                },
+                {
+                    "question": "Which operator is used for strict inequality in JavaScript?",
+                    "options": ["!=", "!==", "<>", "=/="],
+                    "correct": 1,
+                    "explanation": "The '!==' operator checks for strict inequality (different type or value)."
+                },
+                {
+                    "question": "What is the purpose of JSON.parse()?",
+                    "options": ["To create JSON", "To convert JSON string to object", "To validate JSON", "To format JSON"],
+                    "correct": 1,
+                    "explanation": "JSON.parse() converts a JSON string into a JavaScript object."
+                }
+            ],
+            "data science": [
+                {
+                    "question": "What is the first step in the data science process?",
+                    "options": ["Model building", "Data collection", "Data visualization", "Result interpretation"],
+                    "correct": 1,
+                    "explanation": "Data collection is typically the first step, as you need data before you can analyze or model it."
+                },
+                {
+                    "question": "Which Python library is most commonly used for data manipulation?",
+                    "options": ["NumPy", "Pandas", "Matplotlib", "Scikit-learn"],
+                    "correct": 1,
+                    "explanation": "Pandas is the most popular library for data manipulation and analysis in Python."
+                },
+                {
+                    "question": "What does EDA stand for in data science?",
+                    "options": ["Efficient Data Analysis", "Exploratory Data Analysis", "Extended Data Application", "Experimental Data Approach"],
+                    "correct": 1,
+                    "explanation": "EDA stands for Exploratory Data Analysis, which involves examining data to understand its characteristics."
+                },
+                {
+                    "question": "Which visualization is best for showing the distribution of a single variable?",
+                    "options": ["Scatter plot", "Line chart", "Histogram", "Pie chart"],
+                    "correct": 2,
+                    "explanation": "Histograms are ideal for showing the distribution of a single continuous variable."
+                },
+                {
+                    "question": "What is missing data imputation?",
+                    "options": ["Removing missing data", "Filling in missing values", "Ignoring missing data", "Creating new data"],
+                    "correct": 1,
+                    "explanation": "Imputation is the process of filling in missing values with estimated values based on other available data."
+                },
+                {
+                    "question": "Which correlation coefficient ranges from -1 to 1?",
+                    "options": ["Spearman", "Pearson", "Kendall", "All of the above"],
+                    "correct": 3,
+                    "explanation": "All major correlation coefficients (Pearson, Spearman, Kendall) range from -1 to 1."
+                },
+                {
+                    "question": "What is feature scaling?",
+                    "options": ["Adding new features", "Removing features", "Normalizing feature values", "Selecting important features"],
+                    "correct": 2,
+                    "explanation": "Feature scaling involves normalizing or standardizing feature values to ensure they're on similar scales."
+                },
+                {
+                    "question": "Which type of chart is best for showing relationships between two variables?",
+                    "options": ["Bar chart", "Scatter plot", "Pie chart", "Histogram"],
+                    "correct": 1,
+                    "explanation": "Scatter plots are ideal for visualizing relationships between two continuous variables."
+                },
+                {
+                    "question": "What is the purpose of data cleaning?",
+                    "options": ["To reduce data size", "To improve data quality", "To speed up analysis", "To create backups"],
+                    "correct": 1,
+                    "explanation": "Data cleaning aims to improve data quality by handling missing values, outliers, and inconsistencies."
+                },
+                {
+                    "question": "Which statistical measure is most affected by outliers?",
+                    "options": ["Median", "Mode", "Mean", "Range"],
+                    "correct": 2,
+                    "explanation": "The mean is most affected by outliers because it considers all values in its calculation."
                 }
             ]
         }
@@ -580,42 +848,60 @@ Make sure questions are educational and appropriate for the difficulty level."""
         base_questions = []
         
         for key in question_banks:
-            if key in topic_lower:
+            if key in topic_lower or topic_lower in key:
                 base_questions = question_banks[key]
                 break
         
-        # Generate questions
+        # If no specific topic found, create general questions
+        if not base_questions:
+            base_questions = [
+                {
+                    "question": f"What is a fundamental concept in {topic}?",
+                    "options": [f"Basic principle of {topic}", f"Advanced technique in {topic}", f"Unrelated concept", f"Complex theory"],
+                    "correct": 0,
+                    "explanation": f"This question tests your understanding of fundamental concepts in {topic}."
+                },
+                {
+                    "question": f"Which approach is commonly used in {topic}?",
+                    "options": [f"Standard {topic} method", f"Uncommon approach", f"Irrelevant technique", f"Outdated method"],
+                    "correct": 0,
+                    "explanation": f"This tests knowledge of common approaches and methods used in {topic}."
+                },
+                {
+                    "question": f"What is the primary goal of {topic}?",
+                    "options": [f"To achieve {topic} objectives", f"To complicate processes", f"To avoid learning", f"To create confusion"],
+                    "correct": 0,
+                    "explanation": f"Understanding the primary goals and objectives is crucial in {topic}."
+                }
+            ]
+        
+        # Generate questions ensuring we have at least the requested count
         for i in range(count):
             if i < len(base_questions):
                 q = base_questions[i]
+                question_id = str(uuid.uuid4())
                 questions.append(QuizQuestion(
-                    id=str(uuid.uuid4()),
+                    id=question_id,
                     question=q["question"],
                     options=q["options"],
                     correct_answer=q["correct"],
                     difficulty=difficulty
                 ))
                 # Store explanation
-                self.quiz_explanations[questions[-1].id] = q["explanation"]
+                self.quiz_explanations[question_id] = q["explanation"]
             else:
-                # Generate additional questions
-                question_types = [
-                    f"What is a key characteristic of {topic}?",
-                    f"Which statement about {topic} is most accurate?",
-                    f"In the context of {topic}, what does this concept refer to?",
-                    f"What is the primary application of {topic}?",
-                    f"Which approach is commonly used in {topic}?"
-                ]
-                
-                q_text = question_types[i % len(question_types)]
+                # Cycle through questions if we need more
+                q = base_questions[i % len(base_questions)]
+                question_id = str(uuid.uuid4())
+                modified_question = f"{q['question']} (Question {i+1})"
                 questions.append(QuizQuestion(
-                    id=str(uuid.uuid4()),
-                    question=q_text,
-                    options=[f"Option A about {topic}", f"Option B about {topic}", f"Option C about {topic}", f"Option D about {topic}"],
-                    correct_answer=0,
+                    id=question_id,
+                    question=modified_question,
+                    options=q["options"],
+                    correct_answer=q["correct"],
                     difficulty=difficulty
                 ))
-                self.quiz_explanations[questions[-1].id] = f"This question tests your understanding of fundamental concepts in {topic}."
+                self.quiz_explanations[question_id] = q["explanation"]
         
         return questions
     
