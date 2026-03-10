@@ -151,6 +151,15 @@ class EnhancedGamificationService:
             progress.points += self.badges["perfect_score"]["points"]
     
     def get_leaderboard(self, limit: int = 10) -> List[Dict]:
+        # Add some mock data if no real students exist
+        if not self.students:
+            mock_students = [
+                {"rank": 1, "student_id": "demo_student_1", "points": 150, "level": 3, "badges": 2, "streak": 5, "questions_answered": 25},
+                {"rank": 2, "student_id": "demo_student_2", "points": 120, "level": 2, "badges": 1, "streak": 3, "questions_answered": 18},
+                {"rank": 3, "student_id": "demo_student_3", "points": 90, "level": 2, "badges": 1, "streak": 0, "questions_answered": 12},
+            ]
+            return mock_students
+        
         sorted_students = sorted(
             self.students.values(),
             key=lambda x: (x.points, x.level),

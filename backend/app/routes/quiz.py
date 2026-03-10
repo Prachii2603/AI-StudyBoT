@@ -7,8 +7,10 @@ from typing import List
 router = APIRouter()
 
 @router.get("/generate/{topic}", response_model=List[QuizQuestion])
-async def generate_quiz(topic: str, difficulty: int = 1, count: int = 5, student_id: str = None):
+async def generate_quiz(topic: str, difficulty: int = 1, count: int = 10, student_id: str = None):
     try:
+        # Ensure minimum 10 questions
+        count = max(10, count)
         questions = await ai_service.generate_quiz(topic, difficulty, count, student_id)
         return questions
     except Exception as e:

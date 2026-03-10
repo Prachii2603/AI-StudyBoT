@@ -5,7 +5,7 @@ from typing import List
 
 router = APIRouter()
 
-@router.post("/message", response_model=ChatMessage)
+@router.post("/message")
 async def send_message(request: ChatRequest):
     try:
         response = await ai_service.generate_response(
@@ -13,7 +13,27 @@ async def send_message(request: ChatRequest):
             request.student_id,
             request.difficulty_level
         )
-        return ChatMessage(role="assistant", content=response)
+        
+        # Handle both old and new response formats
+        if isinstance(response, dict):
+            return {
+                "role": "assistant",
+                "content": response.get("content", ""),
+                "images": response.get("images", []),
+                "learning_resources": response.get("learning_resources", []),
+                "timestamp": response.get("timestamp")
+            }
+        else:
+            # Fallback for old string format
+            return ChatMessage(role="assistant", content=response)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/quiz-analysis")
+async def analyze_quiz_performance(quiz_results: List[dict], student_id: str):
+    try:
+        analysis = await ai_service.analyze_quiz_performance(student_id, quiz_results)
+        return analysis
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

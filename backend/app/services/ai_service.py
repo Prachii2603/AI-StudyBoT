@@ -12,6 +12,7 @@ import wikipediaapi
 from duckduckgo_search import DDGS
 import re
 from datetime import datetime
+from pyunsplash import PyUnsplash
 
 # Load environment variables
 load_dotenv()
@@ -21,9 +22,11 @@ class EnhancedAIService:
         self.ai_provider = os.getenv("AI_PROVIDER", "groq").lower()
         self.openai_api_key = os.getenv("OPENAI_API_KEY", "")
         self.groq_api_key = os.getenv("GROQ_API_KEY", "")
+        self.unsplash_access_key = os.getenv("UNSPLASH_ACCESS_KEY", "")
         self.conversation_history = {}
         self.student_profiles = {}
         self.quiz_answers = {}
+        self.quiz_explanations = {}
         
         # Initialize Wikipedia API
         self.wiki = wikipediaapi.Wikipedia(
@@ -32,11 +35,50 @@ class EnhancedAIService:
             user_agent='AI-Learning-Chatbot/1.0'
         )
         
+        # Initialize Unsplash for images
+        if self.unsplash_access_key:
+            self.unsplash = PyUnsplash(api_key=self.unsplash_access_key)
+        
         # Initialize AI clients
         if self.ai_provider == "openai" and self.openai_api_key:
             self.openai_client = openai.OpenAI(api_key=self.openai_api_key)
         elif self.ai_provider == "groq" and self.groq_api_key:
             self.groq_client = Groq(api_key=self.groq_api_key)
+    
+    async def get_educational_images(self, topic: str, count: int = 3) -> List[Dict[str, str]]:
+        """Get educational images related to the topic"""
+        images = []
+        try:
+            if hasattr(self, 'unsplash'):
+                # Search for educational images
+                search = self.unsplash.search(type_='photos', query=f"{topic} education learning", per_page=count)
+                for photo in search.entries:
+                    images.append({
+                        'url': photo.urls.regular,
+                        'description': photo.description or f"Educational image about {topic}",
+                        'alt_text': photo.alt_description or topic,
+                        'credit': f"Photo by {photo.user.name} on Unsplash"
+                    })
+            else:
+                # Fallback to placeholder images
+                for i in range(count):
+                    images.append({
+                        'url': f"https://via.placeholder.com/400x300/4F46E5/FFFFFF?text={topic.replace(' ', '+')}+{i+1}",
+                        'description': f"Educational illustration about {topic}",
+                        'alt_text': f"{topic} educational content",
+                        'credit': "Placeholder image"
+                    })
+        except Exception as e:
+            print(f"Error fetching images: {e}")
+            # Fallback images
+            images = [{
+                'url': f"https://via.placeholder.com/400x300/4F46E5/FFFFFF?text={topic.replace(' ', '+')}",
+                'description': f"Educational content about {topic}",
+                'alt_text': topic,
+                'credit': "Educational placeholder"
+            }]
+        
+        return images
     
     def get_student_profile(self, student_id: str) -> Dict[str, Any]:
         """Get or create student learning profile"""
@@ -116,9 +158,12 @@ class EnhancedAIService:
         
         # Analyze if the question needs current information
         needs_search = self._needs_web_search(message)
+        needs_images = self._needs_visual_content(message)
         
         # Gather relevant information
         context_info = ""
+        images = []
+        
         if needs_search:
             # Search for current information
             search_results = await self.search_web_content(message)
@@ -131,6 +176,12 @@ class EnhancedAIService:
         wiki_content = await self.get_wikipedia_content(message)
         if wiki_content:
             context_info += f"\\n\\nEducational background:\\n{wiki_content}\\n"
+        
+        # Get educational images if needed
+        if needs_images:
+            topic_keywords = self._extract_topic_keywords(message)
+            if topic_keywords:
+                images = await self.get_educational_images(topic_keywords, 2)
         
         # Create enhanced system prompt
         system_prompt = self._create_adaptive_prompt(profile, difficulty, context_info)
@@ -152,10 +203,76 @@ class EnhancedAIService:
             'timestamp': datetime.now().isoformat(),
             'question': message,
             'response': response,
-            'difficulty': difficulty
+            'difficulty': difficulty,
+            'images_provided': len(images) > 0
         })
         
-        return response
+        # Return response with images and learning resources
+        learning_resources = await self._get_learning_resources(message)
+        
+        return {
+            "content": response,
+            "images": images,
+            "learning_resources": learning_resources,
+            "timestamp": datetime.now().isoformat()
+        }
+    
+    def _needs_visual_content(self, message: str) -> bool:
+        """Determine if a question would benefit from visual content"""
+        visual_keywords = [
+            'diagram', 'chart', 'graph', 'image', 'picture', 'visual', 'show me',
+            'structure', 'architecture', 'anatomy', 'process', 'workflow',
+            'neural network', 'algorithm', 'data structure', 'molecule', 'cell',
+            'system', 'model', 'design', 'layout', 'interface'
+        ]
+        
+        message_lower = message.lower()
+        return any(keyword in message_lower for keyword in visual_keywords)
+    
+    def _extract_topic_keywords(self, message: str) -> str:
+        """Extract main topic keywords for image search"""
+        # Simple keyword extraction - in production, use NLP libraries
+        common_words = {'what', 'is', 'are', 'how', 'does', 'do', 'can', 'will', 'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'}
+        words = message.lower().split()
+        keywords = [word for word in words if word not in common_words and len(word) > 2]
+        return ' '.join(keywords[:3])  # Take first 3 meaningful words
+    
+    async def _get_learning_resources(self, topic: str) -> List[Dict[str, str]]:
+        """Get learning resource recommendations with links"""
+        resources = []
+        
+        # Extract main topic
+        topic_clean = self._extract_topic_keywords(topic)
+        
+        # Predefined quality learning resources
+        resource_templates = [
+            {
+                "title": f"Khan Academy - {topic_clean.title()}",
+                "url": f"https://www.khanacademy.org/search?search_again=1&page_search_query={topic_clean.replace(' ', '%20')}",
+                "description": "Free, world-class education with interactive exercises and videos",
+                "type": "Interactive Learning"
+            },
+            {
+                "title": f"Coursera Courses - {topic_clean.title()}",
+                "url": f"https://www.coursera.org/search?query={topic_clean.replace(' ', '%20')}",
+                "description": "University-level courses from top institutions",
+                "type": "Online Courses"
+            },
+            {
+                "title": f"YouTube Educational Videos - {topic_clean.title()}",
+                "url": f"https://www.youtube.com/results?search_query={topic_clean.replace(' ', '+')}+tutorial+education",
+                "description": "Visual learning through educational videos",
+                "type": "Video Learning"
+            },
+            {
+                "title": f"Wikipedia - {topic_clean.title()}",
+                "url": f"https://en.wikipedia.org/wiki/{topic_clean.replace(' ', '_')}",
+                "description": "Comprehensive encyclopedia articles with references",
+                "type": "Reference"
+            }
+        ]
+        
+        return resource_templates[:3]  # Return top 3 resources
     
     def _needs_web_search(self, message: str) -> bool:
         """Determine if a question needs current web information"""
@@ -366,9 +483,12 @@ Make sure questions are educational and appropriate for the difficulty level."""
         )
         return response.choices[0].message.content
     
-    async def generate_quiz(self, topic: str, difficulty: int, count: int, student_id: str = None) -> List[QuizQuestion]:
-        """Generate adaptive quiz based on student profile"""
+    async def generate_quiz(self, topic: str, difficulty: int, count: int = 10, student_id: str = None) -> List[QuizQuestion]:
+        """Generate comprehensive quiz with minimum 10 questions"""
         try:
+            # Ensure minimum 10 questions
+            count = max(10, count)
+            
             # Get student profile for adaptive quiz generation
             profile = self.get_student_profile(student_id) if student_id else {}
             
@@ -387,17 +507,117 @@ Make sure questions are educational and appropriate for the difficulty level."""
             elif self.ai_provider == "groq" and hasattr(self, 'groq_client'):
                 quiz_data = await self._generate_quiz_groq(topic, difficulty, count, context_info, profile)
             else:
-                return self._generate_mock_quiz(topic, difficulty, count)
+                return self._generate_comprehensive_mock_quiz(topic, difficulty, count)
             
             questions = self._parse_quiz_response(quiz_data, difficulty)
             
-            # Store answers for verification
+            # Ensure we have at least 10 questions
+            if len(questions) < 10:
+                additional_questions = self._generate_comprehensive_mock_quiz(topic, difficulty, 10 - len(questions))
+                questions.extend(additional_questions)
+            
+            # Store the correct answers and explanations for verification
             self.store_quiz_answers(questions)
             
-            return questions
+            return questions[:count]  # Return exactly the requested number
         except Exception as e:
             print(f"Error generating quiz: {e}")
-            return self._generate_mock_quiz(topic, difficulty, count)
+            return self._generate_comprehensive_mock_quiz(topic, difficulty, count)
+    
+    def _generate_comprehensive_mock_quiz(self, topic: str, difficulty: int, count: int) -> List[QuizQuestion]:
+        """Generate comprehensive fallback quiz with detailed questions"""
+        questions = []
+        difficulty_labels = {1: "Basic", 2: "Intermediate", 3: "Advanced"}
+        
+        # Topic-specific question banks
+        question_banks = {
+            "machine learning": [
+                {
+                    "question": "What is the primary goal of machine learning?",
+                    "options": ["To replace human intelligence", "To enable computers to learn from data", "To create robots", "To process text only"],
+                    "correct": 1,
+                    "explanation": "Machine learning enables computers to learn patterns from data and make predictions or decisions without being explicitly programmed for each task."
+                },
+                {
+                    "question": "Which type of machine learning uses labeled training data?",
+                    "options": ["Unsupervised learning", "Supervised learning", "Reinforcement learning", "Deep learning"],
+                    "correct": 1,
+                    "explanation": "Supervised learning uses labeled training data where the correct answers are provided to train the model."
+                },
+                {
+                    "question": "What is overfitting in machine learning?",
+                    "options": ["Model performs well on training data but poorly on new data", "Model is too simple", "Model trains too slowly", "Model uses too little data"],
+                    "correct": 0,
+                    "explanation": "Overfitting occurs when a model learns the training data too well, including noise, making it perform poorly on new, unseen data."
+                }
+            ],
+            "neural networks": [
+                {
+                    "question": "What is the basic building block of a neural network?",
+                    "options": ["Neuron/Node", "Layer", "Weight", "Bias"],
+                    "correct": 0,
+                    "explanation": "A neuron (or node) is the basic computational unit of a neural network that receives inputs, processes them, and produces an output."
+                },
+                {
+                    "question": "What is the purpose of activation functions in neural networks?",
+                    "options": ["To add complexity and non-linearity", "To reduce computation", "To store data", "To connect layers"],
+                    "correct": 0,
+                    "explanation": "Activation functions introduce non-linearity into the network, allowing it to learn complex patterns and relationships in data."
+                }
+            ],
+            "python programming": [
+                {
+                    "question": "Which of the following is the correct way to define a function in Python?",
+                    "options": ["function myFunc():", "def myFunc():", "define myFunc():", "func myFunc():"],
+                    "correct": 1,
+                    "explanation": "In Python, functions are defined using the 'def' keyword followed by the function name and parentheses."
+                }
+            ]
+        }
+        
+        # Get topic-specific questions or use general ones
+        topic_lower = topic.lower()
+        base_questions = []
+        
+        for key in question_banks:
+            if key in topic_lower:
+                base_questions = question_banks[key]
+                break
+        
+        # Generate questions
+        for i in range(count):
+            if i < len(base_questions):
+                q = base_questions[i]
+                questions.append(QuizQuestion(
+                    id=str(uuid.uuid4()),
+                    question=q["question"],
+                    options=q["options"],
+                    correct_answer=q["correct"],
+                    difficulty=difficulty
+                ))
+                # Store explanation
+                self.quiz_explanations[questions[-1].id] = q["explanation"]
+            else:
+                # Generate additional questions
+                question_types = [
+                    f"What is a key characteristic of {topic}?",
+                    f"Which statement about {topic} is most accurate?",
+                    f"In the context of {topic}, what does this concept refer to?",
+                    f"What is the primary application of {topic}?",
+                    f"Which approach is commonly used in {topic}?"
+                ]
+                
+                q_text = question_types[i % len(question_types)]
+                questions.append(QuizQuestion(
+                    id=str(uuid.uuid4()),
+                    question=q_text,
+                    options=[f"Option A about {topic}", f"Option B about {topic}", f"Option C about {topic}", f"Option D about {topic}"],
+                    correct_answer=0,
+                    difficulty=difficulty
+                ))
+                self.quiz_explanations[questions[-1].id] = f"This question tests your understanding of fundamental concepts in {topic}."
+        
+        return questions
     
     async def _generate_quiz_openai(self, topic: str, difficulty: int, count: int, context_info: str, profile: Dict):
         difficulty_levels = {1: "beginner", 2: "intermediate", 3: "advanced"}
@@ -545,26 +765,185 @@ Format your response as a JSON array with this exact structure:
         
         return questions
     
-    async def check_answer(self, question_id: str, answer: int, student_id: str = None) -> Dict[str, Any]:
-        """Enhanced answer checking with performance tracking"""
-        is_correct = self.quiz_answers.get(question_id, 0) == answer
+    async def analyze_quiz_performance(self, student_id: str, quiz_results: List[Dict]) -> Dict[str, Any]:
+        """Analyze quiz performance and identify weak concepts"""
+        total_questions = len(quiz_results)
+        correct_answers = sum(1 for result in quiz_results if result['correct'])
+        score_percentage = (correct_answers / total_questions) * 100
         
-        result = {
-            "correct": is_correct,
-            "explanation": "Good job!" if is_correct else "Not quite right. Keep learning!",
-            "performance_update": None
+        # Categorize questions by topic/concept
+        concept_performance = {}
+        weak_concepts = []
+        strong_concepts = []
+        
+        for result in quiz_results:
+            question_id = result['question_id']
+            is_correct = result['correct']
+            
+            # Extract concept from question (simplified - in production use NLP)
+            concept = self._extract_concept_from_question(result.get('question', ''))
+            
+            if concept not in concept_performance:
+                concept_performance[concept] = {'correct': 0, 'total': 0, 'questions': []}
+            
+            concept_performance[concept]['total'] += 1
+            concept_performance[concept]['questions'].append(result)
+            
+            if is_correct:
+                concept_performance[concept]['correct'] += 1
+        
+        # Identify weak and strong concepts
+        for concept, performance in concept_performance.items():
+            accuracy = performance['correct'] / performance['total']
+            if accuracy < 0.6:  # Less than 60% accuracy
+                weak_concepts.append({
+                    'concept': concept,
+                    'accuracy': accuracy,
+                    'questions_missed': performance['total'] - performance['correct'],
+                    'total_questions': performance['total']
+                })
+            elif accuracy >= 0.8:  # 80% or higher accuracy
+                strong_concepts.append({
+                    'concept': concept,
+                    'accuracy': accuracy,
+                    'questions_correct': performance['correct'],
+                    'total_questions': performance['total']
+                })
+        
+        # Generate performance insights
+        performance_level = self._get_performance_level(score_percentage)
+        recommendations = await self._generate_study_recommendations(weak_concepts, strong_concepts)
+        
+        # Update student profile
+        profile = self.get_student_profile(student_id)
+        for concept_data in weak_concepts:
+            concept = concept_data['concept']
+            if concept in profile['knowledge_areas']:
+                profile['knowledge_areas'][concept] = max(0, profile['knowledge_areas'][concept] - 10)
+            else:
+                profile['knowledge_areas'][concept] = 30  # Below average
+        
+        for concept_data in strong_concepts:
+            concept = concept_data['concept']
+            if concept in profile['knowledge_areas']:
+                profile['knowledge_areas'][concept] = min(100, profile['knowledge_areas'][concept] + 15)
+            else:
+                profile['knowledge_areas'][concept] = 80  # Above average
+        
+        return {
+            'score': {
+                'correct': correct_answers,
+                'total': total_questions,
+                'percentage': round(score_percentage, 1)
+            },
+            'performance_level': performance_level,
+            'weak_concepts': weak_concepts,
+            'strong_concepts': strong_concepts,
+            'concept_breakdown': concept_performance,
+            'recommendations': recommendations,
+            'next_steps': self._get_next_steps(weak_concepts, performance_level)
+        }
+    
+    def _extract_concept_from_question(self, question: str) -> str:
+        """Extract main concept from question text"""
+        # Simplified concept extraction - in production use NLP
+        question_lower = question.lower()
+        
+        concept_keywords = {
+            'machine learning': ['machine learning', 'ml', 'algorithm', 'model', 'training', 'prediction'],
+            'neural networks': ['neural', 'network', 'neuron', 'layer', 'activation', 'backpropagation'],
+            'data structures': ['array', 'list', 'tree', 'graph', 'stack', 'queue', 'hash'],
+            'programming': ['function', 'variable', 'loop', 'condition', 'syntax', 'code'],
+            'mathematics': ['equation', 'formula', 'calculation', 'number', 'algebra', 'geometry'],
+            'science': ['experiment', 'hypothesis', 'theory', 'observation', 'analysis']
         }
         
-        # Update student performance if student_id provided
-        if student_id:
-            # This would typically involve more sophisticated tracking
-            # For now, we'll do basic performance updates
-            result["performance_update"] = {
-                "points_earned": 10 if is_correct else 2,
-                "streak_updated": True
-            }
+        for concept, keywords in concept_keywords.items():
+            if any(keyword in question_lower for keyword in keywords):
+                return concept
         
-        return result
+        return 'general knowledge'
+    
+    def _get_performance_level(self, score_percentage: float) -> Dict[str, str]:
+        """Determine performance level based on score"""
+        if score_percentage >= 90:
+            return {
+                'level': 'Excellent',
+                'description': 'Outstanding performance! You have mastered this topic.',
+                'color': 'green'
+            }
+        elif score_percentage >= 80:
+            return {
+                'level': 'Good',
+                'description': 'Good job! You have a solid understanding with room for improvement.',
+                'color': 'blue'
+            }
+        elif score_percentage >= 70:
+            return {
+                'level': 'Average',
+                'description': 'You have a basic understanding. Focus on weak areas for improvement.',
+                'color': 'yellow'
+            }
+        elif score_percentage >= 60:
+            return {
+                'level': 'Below Average',
+                'description': 'You need more practice. Review the concepts and try again.',
+                'color': 'orange'
+            }
+        else:
+            return {
+                'level': 'Needs Improvement',
+                'description': 'Significant improvement needed. Consider reviewing fundamentals.',
+                'color': 'red'
+            }
+    
+    async def _generate_study_recommendations(self, weak_concepts: List[Dict], strong_concepts: List[Dict]) -> List[Dict[str, str]]:
+        """Generate personalized study recommendations"""
+        recommendations = []
+        
+        if weak_concepts:
+            for concept_data in weak_concepts[:3]:  # Top 3 weak concepts
+                concept = concept_data['concept']
+                recommendations.append({
+                    'type': 'improvement',
+                    'title': f"Focus on {concept.title()}",
+                    'description': f"You got {concept_data['questions_missed']} out of {concept_data['total_questions']} questions wrong in this area.",
+                    'action': f"Review {concept} fundamentals and practice more questions",
+                    'resources': await self._get_learning_resources(concept)
+                })
+        
+        if strong_concepts:
+            for concept_data in strong_concepts[:2]:  # Top 2 strong concepts
+                concept = concept_data['concept']
+                recommendations.append({
+                    'type': 'strength',
+                    'title': f"Excellent work on {concept.title()}",
+                    'description': f"You answered {concept_data['questions_correct']} out of {concept_data['total_questions']} questions correctly!",
+                    'action': f"Consider exploring advanced topics in {concept}",
+                    'resources': await self._get_learning_resources(f"advanced {concept}")
+                })
+        
+        return recommendations
+    
+    def _get_next_steps(self, weak_concepts: List[Dict], performance_level: Dict) -> List[str]:
+        """Get specific next steps based on performance"""
+        steps = []
+        
+        if performance_level['level'] in ['Excellent', 'Good']:
+            steps.append("🎉 Great job! Consider taking a more challenging quiz or exploring advanced topics.")
+            steps.append("📚 Try teaching these concepts to someone else to reinforce your knowledge.")
+        
+        if weak_concepts:
+            steps.append(f"📖 Review the following concepts: {', '.join([c['concept'] for c in weak_concepts[:3]])}")
+            steps.append("🔄 Retake the quiz after studying to track your improvement.")
+            steps.append("💡 Use the provided learning resources for targeted practice.")
+        
+        if performance_level['level'] in ['Below Average', 'Needs Improvement']:
+            steps.append("🎯 Focus on understanding fundamentals before moving to advanced topics.")
+            steps.append("👥 Consider finding a study partner or joining a study group.")
+            steps.append("⏰ Set aside regular study time each day for consistent improvement.")
+        
+        return steps
     
     def store_quiz_answers(self, questions: List[QuizQuestion]):
         """Store correct answers for later verification"""
@@ -607,6 +986,34 @@ Format your response as a JSON array with this exact structure:
         recommendations["study_methods"] = style_methods.get(learning_style, style_methods['visual'])
         
         return recommendations
+
+    async def check_answer(self, question_id: str, answer: int, student_id: str = None) -> Dict[str, Any]:
+        """Enhanced answer checking with detailed explanations"""
+        is_correct = self.quiz_answers.get(question_id, 0) == answer
+        explanation = self.quiz_explanations.get(question_id, "Keep learning and practicing!")
+        
+        result = {
+            "correct": is_correct,
+            "explanation": explanation,
+            "performance_update": None
+        }
+        
+        # Update student performance if student_id provided
+        if student_id:
+            result["performance_update"] = {
+                "points_earned": 10 if is_correct else 2,
+                "streak_updated": True
+            }
+        
+        return result
+
+    def store_quiz_answers(self, questions: List[QuizQuestion]):
+        """Store correct answers and explanations for later verification"""
+        for question in questions:
+            self.quiz_answers[question.id] = question.correct_answer
+            # Store explanation if not already stored
+            if question.id not in self.quiz_explanations:
+                self.quiz_explanations[question.id] = f"The correct answer relates to fundamental concepts in this topic area."
 
 # Create a global instance
 ai_service = EnhancedAIService()

@@ -34,6 +34,13 @@ export const submitAnswer = async (questionId, studentId, answer) => {
   return response.data
 }
 
+export const analyzeQuizPerformance = async (quizResults, studentId) => {
+  const response = await api.post('/chat/quiz-analysis', quizResults, {
+    params: { student_id: studentId }
+  })
+  return response.data
+}
+
 export const getProgress = async (studentId) => {
   const response = await api.get(`/progress/${studentId}`)
   return response.data
@@ -63,6 +70,66 @@ export const completeQuiz = async (studentId, score, totalQuestions) => {
   const response = await api.post(`/progress/${studentId}/quiz-complete`, null, {
     params: { score, total_questions: totalQuestions }
   })
+  return response.data
+}
+
+// Games API
+export const getAvailableGames = async () => {
+  const response = await api.get('/games/available')
+  return response.data
+}
+
+export const startWordMatchGame = async (topic, studentId) => {
+  const response = await api.post('/games/word-match/start', {
+    topic,
+    student_id: studentId
+  })
+  return response.data
+}
+
+export const makeWordMatch = async (gameId, term, definition) => {
+  const response = await api.post('/games/word-match/match', {
+    game_id: gameId,
+    term,
+    definition
+  })
+  return response.data
+}
+
+export const startLightningQuiz = async (topic, studentId) => {
+  const response = await api.post('/games/lightning-quiz/start', {
+    topic,
+    student_id: studentId
+  })
+  return response.data
+}
+
+export const answerLightningQuestion = async (gameId, answer) => {
+  const response = await api.post('/games/lightning-quiz/answer', {
+    game_id: gameId,
+    answer
+  })
+  return response.data
+}
+
+export const startMemoryCardsGame = async (topic, studentId) => {
+  const response = await api.post('/games/memory-cards/start', {
+    topic,
+    student_id: studentId
+  })
+  return response.data
+}
+
+export const flipMemoryCard = async (gameId, cardId) => {
+  const response = await api.post('/games/memory-cards/flip', {
+    game_id: gameId,
+    card_id: cardId
+  })
+  return response.data
+}
+
+export const getGameLeaderboard = async (gameType) => {
+  const response = await api.get(`/games/leaderboard/${gameType}`)
   return response.data
 }
 

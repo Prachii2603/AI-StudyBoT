@@ -4,6 +4,13 @@ from app.services.gamification import gamification
 
 router = APIRouter()
 
+@router.get("/leaderboard")
+async def get_leaderboard(limit: int = 10):
+    try:
+        return gamification.get_leaderboard(limit)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/{student_id}", response_model=StudentProgress)
 async def get_progress(student_id: str):
     try:
@@ -15,13 +22,6 @@ async def get_progress(student_id: str):
 async def get_achievements(student_id: str):
     try:
         return gamification.get_student_achievements(student_id)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("/leaderboard")
-async def get_leaderboard(limit: int = 10):
-    try:
-        return gamification.get_leaderboard(limit)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

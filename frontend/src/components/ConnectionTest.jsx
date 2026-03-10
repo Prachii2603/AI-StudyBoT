@@ -12,11 +12,16 @@ export default function ConnectionTest() {
     setResponse('')
     
     try {
+      console.log('Testing connection...')
       const result = await sendMessage('Hello, test connection', 'test-user', 1)
-      setResponse(result.content)
+      console.log('Connection test result:', result)
+      
+      // Handle both old and new response formats
+      const content = result.content || result || 'Connection successful!'
+      setResponse(content)
     } catch (err) {
-      setError(err.message || 'Connection failed')
       console.error('Connection test error:', err)
+      setError(err.message || 'Connection failed')
     } finally {
       setLoading(false)
     }
@@ -41,15 +46,16 @@ export default function ConnectionTest() {
       )}
 
       {response && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
           <strong>✅ Success!</strong>
-          <p className="mt-2">{response}</p>
+          <p className="mt-2 whitespace-pre-wrap">{response}</p>
         </div>
       )}
 
       <div className="mt-4 text-sm text-gray-600">
         <p><strong>Backend URL:</strong> http://localhost:8000</p>
         <p><strong>Frontend URL:</strong> http://localhost:3000</p>
+        <p><strong>Status:</strong> {loading ? 'Testing...' : error ? 'Error' : response ? 'Connected' : 'Ready to test'}</p>
       </div>
     </div>
   )
