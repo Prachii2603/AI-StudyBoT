@@ -18,5 +18,12 @@ build/
 .vscode/
 .idea/
 
-# Environment
+# Environment & API Keys
 .env
+*.env
+.env.local
+.env.production
+
+# Database
+*.db
+*.sqlite

@@ -18,9 +18,9 @@ export const sendMessage = async (message, studentId, difficultyLevel) => {
   return response.data
 }
 
-export const generateQuiz = async (topic, difficulty, count) => {
+export const generateQuiz = async (topic, difficulty, count, studentId = null) => {
   const response = await api.get(`/quiz/generate/${topic}`, {
-    params: { difficulty, count },
+    params: { difficulty, count, student_id: studentId },
   })
   return response.data
 }
@@ -39,8 +39,30 @@ export const getProgress = async (studentId) => {
   return response.data
 }
 
+export const getAchievements = async (studentId) => {
+  const response = await api.get(`/progress/${studentId}/achievements`)
+  return response.data
+}
+
 export const getLeaderboard = async () => {
   const response = await api.get('/progress/leaderboard')
+  return response.data
+}
+
+export const getLearningRecommendations = async (studentId) => {
+  const response = await api.get(`/chat/recommendations/${studentId}`)
+  return response.data
+}
+
+export const getStudentProfile = async (studentId) => {
+  const response = await api.get(`/chat/profile/${studentId}`)
+  return response.data
+}
+
+export const completeQuiz = async (studentId, score, totalQuestions) => {
+  const response = await api.post(`/progress/${studentId}/quiz-complete`, null, {
+    params: { score, total_questions: totalQuestions }
+  })
   return response.data
 }
 
